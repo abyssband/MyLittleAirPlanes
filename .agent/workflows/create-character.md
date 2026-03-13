@@ -9,14 +9,14 @@ description: 新增 2D 精靈動畫角色的完整工法
 - 綠幕背景 `#00FF00`，kawaii chibi 風格
 - **此圖為所有後續幀的造型基準**（服裝、配件、比例必須鎖定）
 
-## 2. 以基準圖為參考，生成 12 張精靈圖
+## 2. 以基準圖為參考，生成 20 張精靈圖
 每張都必須傳入 fly_1 作為 `ImagePaths` 參考，並在 prompt 中強調 **SAME CHARACTER / EXACT same art style**
 
 | 動畫狀態 | 幀數 | 說明 |
 |---------|------|------|
-| `fly_1` / `fly_2` / `fly_3` | 3 | 飛行翅膀拍動循環（中/上/下） |
-| `ascend_1` / `ascend_2` | 2 | 往上爬升，身體傾斜向上 |
-| `descend_1` / `descend_2` | 2 | 下降俯衝，身體傾斜向下 |
+| `fly_1` ~ `fly_5` | 5 | 飛行翅膀拍動循環 |
+| `ascend_1` ~ `ascend_5` | 5 | 往上爬升，身體傾斜向上 |
+| `descend_1` ~ `descend_5` | 5 | 下降俯衝，身體傾斜向下 |
 | `happy` | 1 | 吃到金幣歡呼表情 |
 | `hit` | 1 | 被撞到痛苦表情 |
 | `crash` | 1 | HP 歸零墜毀暈眩 |
@@ -37,7 +37,7 @@ python3 /tmp/process_[character]_sprites.py
 處理腳本要做的事：
 1. 縮放到 1024×1024
 2. 綠幕去背（`remove_green_pixels`，閾值 100）
-3. 計算 12 張的 **統一邊界框（union bounding box）**
+3. 計算 20 張的 **統一邊界框（union bounding box）**
 4. 以統一中心點裁切，加 8% padding
 5. 強制為正方形
 6. 縮放到 512×512 輸出至 `assets/sprites/`
