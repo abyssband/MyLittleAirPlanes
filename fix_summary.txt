@@ -1,0 +1,3 @@
+Bug 1: unpkg.com ORB issue blocking GLTFLoader. Changed to jsdelivr.
+Bug 2: CanvasTexture tail stripes occasionally fail WebGL context. Changed tail to grouped Spheres.
+Actions: Server is running on port 8081. Subagent keeps dying, need user.

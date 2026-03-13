@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Build artifacts
+dist/
+build/
+
+# Temporary files
+*.tmp
+*.log
+
+# 3D model caches and outputs (large files)
+triposr_output/
+shap_e_model_cache/
+trellis_output/
+*.pt
+*.glb
+
+# Python cache
+__pycache__/
+*.pyc

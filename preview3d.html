@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <title>🐱 3D Cat Preview</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: #fff;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        h1 {
+            margin-bottom: 15px;
+            font-size: 24px;
+            background: linear-gradient(90deg, #ff9a56, #ffcd56);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        #preview-container {
+            position: relative;
+            width: 512px;
+            height: 512px;
+            border-radius: 16px;
+            overflow: hidden;
+            background: repeating-conic-gradient(#2a2a4a 0% 25%, #1e1e3e 0% 50%) 50% / 20px 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            transition: border-color 0.3s;
+        }
+
+        #preview-container.drag-over {
+            border-color: #4caf50;
+            background: repeating-conic-gradient(#2a3a2a 0% 25%, #1e2e1e 0% 50%) 50% / 20px 20px;
+        }
+
+        #preview-canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .drop-overlay {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(76, 175, 80, 0.3);
+            border: 3px dashed #4caf50;
+            border-radius: 14px;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            font-weight: bold;
+            color: #4caf50;
+        }
+
+        #preview-container.drag-over .drop-overlay {
+            display: flex;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 600;
+        }
+
+        .btn:hover {
+            transform: scale(1.05);
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+        }
+
+        .btn-idle {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-happy {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .btn-excited {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .btn-worried {
+            background: #7b68ee;
+            color: white;
+        }
+
+        .btn-blink {
+            background: #20c997;
+            color: white;
+        }
+
+        .btn-active {
+            outline: 3px solid #fff;
+            outline-offset: 2px;
+        }
+
+        .btn-glb {
+            background: #4caf50;
+            color: white;
+            font-size: 13px;
+        }
+
+        .slider-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .slider-row label {
+            font-size: 13px;
+            min-width: 80px;
+        }
+
+        .slider-row input[type=range] {
+            width: 200px;
+        }
+
+        .slider-row span {
+            font-size: 13px;
+            min-width: 60px;
+        }
+
+        #status {
+            margin-top: 10px;
+            padding: 8px 16px;
+            background: rgba(100, 255, 100, 0.15);
+            border-radius: 6px;
+            font-size: 12px;
+        }
+
+        .info {
+            margin-top: 10px;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            font-size: 13px;
+            color: #aaa;
+            max-width: 512px;
+            text-align: center;
+        }
+
+        .mode-tag {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-left: 8px;
+        }
+
+        .mode-procedural {
+            background: #e88a20;
+            color: white;
+        }
+
+        .mode-glb {
+            background: #4caf50;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🐱 3D Cat Airplane Preview</h1>
+    <div id="preview-container">
+        <canvas id="preview-canvas"></canvas>
+        <div class="drop-overlay">📦 Drop GLB file here</div>
+    </div>
+
+    <div class="controls">
+        <button class="btn btn-idle btn-active" onclick="setExpression('idle')">😐 Idle</button>
+        <button class="btn btn-happy" onclick="setExpression('happy')">😊 Happy</button>
+        <button class="btn btn-excited" onclick="setExpression('excited')">⭐ Excited</button>
+        <button class="btn btn-worried" onclick="setExpression('worried')">😰 Worried</button>
+        <button class="btn btn-blink" onclick="triggerBlink()">😌 Blink</button>
+        <label class="btn btn-glb">📁 Load GLB <input type="file" accept=".glb,.gltf" onchange="loadGLBFile(event)"
+                style="display:none"></label>
+    </div>
+
+    <div class="slider-row">
+        <label>✈️ Speed:</label>
+        <input type="range" id="speedSlider" min="0" max="1000" value="0">
+        <span id="speedVal">0 km/h</span>
+    </div>
+    <div class="slider-row">
+        <label>🔄 Rotate Y:</label>
+        <input type="range" id="rotateSlider" min="-180" max="180" value="-17">
+        <span id="rotateVal">-17°</span>
+    </div>
+    <div class="slider-row">
+        <label>🔼 Rotate X:</label>
+        <input type="range" id="rotateXSlider" min="-90" max="90" value="0">
+        <span id="rotateXVal">0°</span>
+    </div>
+    <div class="slider-row">
+        <label>🔍 Zoom:</label>
+        <input type="range" id="zoomSlider" min="10" max="80" value="30">
+        <span id="zoomVal">3.0</span>
+    </div>
+
+    <div id="status">Loading...</div>
+
+    <div class="info">
+        🎨 <b>Drag & drop a .glb file</b> onto the preview to test AI-generated 3D models.<br>
+        Or click "Load GLB" to browse. Falls back to procedural chibi cat if no model loaded.
+    </div>
+
+    <script src="https://unpkg.com/three@0.149.0/build/three.min.js"></script>
+    <script src="https://unpkg.com/three@0.147.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script>
+        window.addEventListener('error', function (e) {
+            const errDiv = document.createElement('div');
+            errDiv.style.position = 'fixed'; errDiv.style.top = '10px'; errDiv.style.left = '10px';
+            errDiv.style.background = 'rgba(255,0,0,0.8)'; errDiv.style.color = 'white'; errDiv.style.padding = '10px';
+            errDiv.style.zIndex = '9999'; errDiv.style.fontFamily = 'monospace';
+            errDiv.innerHTML = `Error: ${e.message}<br>Line: ${e.lineno}<br>Col: ${e.colno}`;
+            document.body.appendChild(errDiv);
+        });
+
+        let scene, camera, renderer, catGroup;
+        let glbModel = null, mixer = null, mode = 'procedural';
+        let expression = 'idle', time = 0, speed = 0, launched = false;
+        let forceBlink = false, blinkTimer = 0, blinkInterval = 3, isBlinking = false;
+
+        // Procedural refs
+        let body, head, face, belly, earL, earR;
+        let eyeL, eyeR, eyeGroup, mouth, happyMouth;
+        let wingGroupL, wingGroupR;
+        let tailSegments = [], paws = [], whiskers = [];
+        let blushL, blushR, nose;
+        let eyeMaterials = {}, currentEyeType = '';
+
+        const COL = {
+            body: 0xFA8D14, bodyDark: 0xD66C08, // Deeper, non-neon caramel orange
+            belly: 0xFFF5E6, face: 0xFFF0DD,
+            ear: 0xFA8D14, earInner: 0xFFB5C5,
+            nose: 0xFF8FA0, blush: 0xFFB0C4, mouth: 0x5A3525,
+            wing: 0xFFF5F8, wingTip: 0xFFE8EE,
+            paw: 0xFA8D14, pad: 0xFFB7C5, tailTip: 0xD66C08,
+            propeller: 0x6B4423
+        };
+
+        // ====== EYE DRAWING ======
+        function drawEye(ctx, sz, type) {
+            const cx = sz / 2, cy = sz / 2, r = sz * 0.42;
+            ctx.clearRect(0, 0, sz, sz);
+            if (type === 'blink') { ctx.strokeStyle = '#2a1a0a'; ctx.lineWidth = sz * 0.06; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(cx - r * 0.6, cy); ctx.quadraticCurveTo(cx, cy + r * 0.2, cx + r * 0.6, cy); ctx.stroke(); return; }
+            if (type === 'happy') { ctx.strokeStyle = '#2a1a0a'; ctx.lineWidth = sz * 0.06; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(cx - r * 0.55, cy + r * 0.15); ctx.quadraticCurveTo(cx, cy - r * 0.5, cx + r * 0.55, cy + r * 0.15); ctx.stroke(); return; }
+            const big = type === 'excited', eR = big ? r * 1.05 : r;
+            ctx.save(); ctx.shadowColor = 'rgba(255,255,255,0.4)'; ctx.shadowBlur = 8;
+            ctx.beginPath(); ctx.ellipse(cx, cy, eR, eR * (type === 'worried' ? 0.85 : 1), 0, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill(); ctx.restore();
+            const iR = eR * 0.72, g = ctx.createRadialGradient(cx, cy - iR * 0.1, iR * 0.15, cx, cy, iR);
+            if (type === 'worried') { g.addColorStop(0, '#6b8cc7'); g.addColorStop(0.6, '#3a5a8a'); g.addColorStop(1, '#2a3a5a'); }
+            else if (type === 'excited') { g.addColorStop(0, '#ffcc44'); g.addColorStop(0.5, '#e88a20'); g.addColorStop(1, '#a05010'); }
+            else { g.addColorStop(0, '#e8a840'); g.addColorStop(0.55, '#b87020'); g.addColorStop(1, '#6a4010'); }
+            ctx.beginPath(); ctx.arc(cx, cy, iR, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill();
+            ctx.beginPath(); ctx.arc(cx, cy + iR * 0.05, iR * (big ? 0.55 : 0.5), 0, Math.PI * 2); ctx.fillStyle = '#1a0a00'; ctx.fill();
+            ctx.beginPath(); ctx.arc(cx + eR * 0.22, cy - eR * 0.28, eR * 0.22, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,255,255,0.95)'; ctx.fill();
+            ctx.beginPath(); ctx.arc(cx - eR * 0.2, cy + eR * 0.18, eR * 0.1, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.fill();
+            if (type === 'worried') { ctx.strokeStyle = '#3a2a1a'; ctx.lineWidth = sz * 0.05; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(cx - eR * 0.6, cy - eR * 0.95); ctx.lineTo(cx + eR * 0.4, cy - eR * 1.15); ctx.stroke(); }
+        }
+
+        function genEyeTextures(T) {
+            const sz = 256;
+            ['idle', 'happy', 'excited', 'worried', 'blink'].forEach(n => {
+                const c = document.createElement('canvas'); c.width = sz; c.height = sz;
+                drawEye(c.getContext('2d'), sz, n);
+                const tex = new T.CanvasTexture(c); tex.needsUpdate = true; tex.minFilter = T.LinearFilter; tex.magFilter = T.LinearFilter;
+                eyeMaterials[n] = new T.MeshBasicMaterial({ map: tex, transparent: true, side: T.DoubleSide, depthWrite: false, depthTest: false });
+            });
+        }
+
+        function setEyeTexture(n) {
+            if (n === currentEyeType || !eyeL) return; currentEyeType = n;
+            const m = eyeMaterials[n]; if (!m) return;
+            const mL = m.clone(); mL.depthTest = false; eyeL.material = mL; eyeL.renderOrder = 10;
+            const mR = m.clone(); mR.depthTest = false; eyeR.material = mR; eyeR.renderOrder = 10;
+        }
+
+        // ====== BUILD PROCEDURAL ======
+        function buildAngelWing(T, group, COL, dir) {
+            const toon = (c) => new T.MeshToonMaterial({ color: c });
+            [{ s: 1.0, c: COL.wing, d: 0.04, y: 0 }, { s: 0.9, c: COL.wingTip, d: 0.03, y: -0.05 }, { s: 0.75, c: COL.wing, d: 0.03, y: -0.08 }]
+                .forEach((l, i) => {
+                    const shape = new T.Shape();
+                    shape.moveTo(0, 0);
+                    shape.bezierCurveTo(0.25 * l.s, 0.2 * l.s, 0.45 * l.s, 0.8 * l.s, 0.2 * l.s, 1.3 * l.s);
+                    shape.bezierCurveTo(0.1 * l.s, 1.15 * l.s, -0.05 * l.s, 0.85 * l.s, -0.08 * l.s, 0.6 * l.s);
+                    shape.bezierCurveTo(-0.1 * l.s, 0.3 * l.s, -0.05 * l.s, 0.1 * l.s, 0, 0);
+                    const mesh = new T.Mesh(
+                        new T.ExtrudeGeometry(shape, { depth: l.d, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.02, bevelSegments: 3 }),
+                        toon(l.c)
+                    );
+                    mesh.rotation.x = -Math.PI / 2 * dir;
+                    mesh.position.y = l.y; mesh.position.z = i * 0.02 * -dir;
+                    group.add(mesh);
+                });
+            for (let i = 0; i < 4; i++) {
+                const t = i / 3;
+                const f = new T.Mesh(new T.BoxGeometry(0.04, 0.3 + t * 0.2, 0.02), toon(i % 2 === 0 ? COL.wing : COL.wingTip));
+                f.position.set(0.08 - t * 0.05, -(0.3 + t * 0.35) * dir, -0.01);
+                f.rotation.x = -Math.PI / 2 * dir; f.rotation.z = (i - 1.5) * 0.08;
+                group.add(f);
+            }
+        }
+
+        let propellerGroup; // Add to global refs
+        let tailGroup, mainTail; // Added to globals for reference
+
+        function buildCat(T) {
+            const toon = (color) => new T.MeshToonMaterial({ color });
+            const basic = (color, opts = {}) => new T.MeshBasicMaterial({ color, ...opts });
+
+            const COL = {
+                body: 0xFCA311, bodyDark: 0xD68305, // Much warmer, non-neon caramel orange
+                belly: 0xFFF7EC, face: 0xFFF2E6,
+                ear: 0xFCA311, earInner: 0xFFB5C5,
+                nose: 0xFF8FA0, blush: 0xFFB0C4, mouth: 0x5A3525,
+                wing: 0xFFFFFF, wingTip: 0xFFF0F5,
+                paw: 0xFCA311, pad: 0xFFB7C5,
+                tailTip: 0xD68305, propeller: 0x6B4423, propSpin: 0xCDBA96
+            };
+            // Override body color to warm orange matching 2D concept
+            COL.body = 0xF08C28;
+            COL.bodyDark = 0xC86A10;
+
+            // ========================================
+            // 2D CONCEPT ART FAITHFUL REBUILD
+            // The 2D shows: A fat round cat whose body IS the airplane fuselage.
+            // The cat's big head takes up the top 60%, the plump body/fuselage the bottom 40%.
+            // Wings extend from the sides of the body, propeller at the nose.
+            // ========================================
+
+            // --- BODY / FUSELAGE (The cat's round body IS the plane) ---
+            const fuselageGeo = new T.SphereGeometry(1.15, 32, 24);
+            fuselageGeo.scale(1.15, 1.0, 1.0); // Slightly elongated front-to-back
+            body = new T.Mesh(fuselageGeo, toon(COL.body));
+            body.position.set(0, -0.2, 0); // Center of mass is lower
+            catGroup.add(body);
+
+            // Belly (White lower portion - like 2D)
+            const bellyGeo = new T.SphereGeometry(1.05, 32, 24);
+            bellyGeo.scale(1.1, 0.9, 0.95);
+            belly = new T.Mesh(bellyGeo, toon(COL.belly));
+            belly.position.set(0, -0.55, 0);
+            catGroup.add(belly);
+
+            // Decorative Stripes on the BACK of the body (matching 2D: orange-dark stripes on tail half)
+            for (let i = 0; i < 3; i++) {
+                const stripe = new T.Mesh(
+                    new T.TorusGeometry(1.05 - i * 0.08, 0.035, 8, 48),
+                    toon(COL.bodyDark)
+                );
+                stripe.position.x = -0.3 - i * 0.35;
+                stripe.rotation.y = Math.PI / 2;
+                catGroup.add(stripe);
+            }
+
+            // Cockpit Window Panels (Blue rectangles on the chest, like 2D shows)
+            const windowGeo = new T.PlaneGeometry(0.22, 0.15);
+            const windowMat = basic(0x87CEEB, { transparent: true, opacity: 0.8, side: T.DoubleSide });
+            const win1 = new T.Mesh(windowGeo, windowMat);
+            win1.position.set(0.7, -0.05, -0.22);
+            win1.rotation.y = Math.PI / 4;
+            win1.renderOrder = 5;
+            catGroup.add(win1);
+            const win2 = new T.Mesh(windowGeo.clone(), windowMat.clone());
+            win2.position.set(0.7, -0.05, 0.22);
+            win2.rotation.y = -Math.PI / 4;
+            win2.renderOrder = 5;
+            catGroup.add(win2);
+
+            // --- CAT HEAD (BIG round head, ~60% of visual height, sitting on top of body) ---
+            const catHeadGroup = new T.Group();
+            catHeadGroup.position.set(0.15, 0.85, 0);
+            catGroup.add(catHeadGroup);
+
+            // Head Sphere (Large chibi head)
+            const headGeo = new T.SphereGeometry(1.1, 32, 24);
+            headGeo.scale(1.0, 0.95, 0.95);
+            head = new T.Mesh(headGeo, toon(COL.body));
+            catHeadGroup.add(head);
+
+            // Face patch (cream/white lower face area - the muzzle)
+            const faceGeo = new T.SphereGeometry(0.85, 24, 20);
+            faceGeo.scale(0.82, 0.75, 0.9);
+            face = new T.Mesh(faceGeo, toon(COL.face));
+            face.position.set(0.35, -0.25, 0);
+            catHeadGroup.add(face);
+
+            // Fluffy Cheek Fur (Big soft cheek puffs like 2D)
+            const cheekGeo = new T.SphereGeometry(0.42, 16, 12);
+            const cL = new T.Mesh(cheekGeo, toon(COL.body));
+            cL.position.set(0.25, -0.28, -0.62); cL.scale.set(0.7, 0.65, 0.55);
+            catHeadGroup.add(cL);
+            const cR = new T.Mesh(cheekGeo.clone(), toon(COL.body));
+            cR.position.set(0.25, -0.28, 0.62); cR.scale.set(0.7, 0.65, 0.55);
+            catHeadGroup.add(cR);
+
+            // Head Stripes (2D shows 3 stripes on top of head)
+            for (let i = 0; i < 3; i++) {
+                const hs = new T.Mesh(
+                    new T.BoxGeometry(0.6, 0.04, 0.08),
+                    toon(COL.bodyDark)
+                );
+                hs.position.set(-0.1, 0.88 - i * 0.04, (i - 1) * 0.18);
+                hs.rotation.z = 0.15;
+                catHeadGroup.add(hs);
+            }
+
+            // Ears (Big triangular ears with pink inner, like 2D)
+            const earGeo = new T.ConeGeometry(0.35, 0.65, 4);
+            earL = new T.Mesh(earGeo, toon(COL.ear));
+            earL.position.set(-0.05, 0.9, -0.45);
+            earL.rotation.z = 0.2; earL.rotation.x = -0.2;
+            catHeadGroup.add(earL);
+            const eiL = new T.Mesh(new T.ConeGeometry(0.18, 0.45, 4), toon(COL.earInner));
+            eiL.position.set(-0.03, 0.92, -0.43);
+            eiL.rotation.z = 0.2; eiL.rotation.x = -0.2;
+            catHeadGroup.add(eiL);
+            earR = new T.Mesh(earGeo.clone(), toon(COL.ear));
+            earR.position.set(-0.05, 0.9, 0.45);
+            earR.rotation.z = 0.2; earR.rotation.x = 0.2;
+            catHeadGroup.add(earR);
+            const eiR = new T.Mesh(new T.ConeGeometry(0.18, 0.45, 4), toon(COL.earInner));
+            eiR.position.set(-0.03, 0.92, 0.43);
+            eiR.rotation.z = 0.2; eiR.rotation.x = 0.2;
+            catHeadGroup.add(eiR);
+
+            // Eyes (BIG sparkly anime eyes, positioned in the middle of the face like 2D)
+            eyeGroup = new T.Group();
+            const eyeSize = 0.75;
+            const eyePlaneGeo = new T.PlaneGeometry(eyeSize, eyeSize);
+            const defaultMat = eyeMaterials['idle'];
+
+            eyeL = new T.Mesh(eyePlaneGeo, defaultMat.clone());
+            eyeL.position.set(0.78, 0.0, -0.38);
+            eyeL.rotation.y = Math.PI / 2 + 0.2;
+            eyeL.rotation.x = -0.03;
+            eyeL.renderOrder = 10; eyeL.material.depthTest = false;
+            eyeGroup.add(eyeL);
+
+            eyeR = new T.Mesh(eyePlaneGeo.clone(), defaultMat.clone());
+            eyeR.position.set(0.78, 0.0, 0.38);
+            eyeR.rotation.y = Math.PI / 2 - 0.2;
+            eyeR.rotation.x = 0.03;
+            eyeR.renderOrder = 10; eyeR.material.depthTest = false;
+            eyeGroup.add(eyeR);
+            catHeadGroup.add(eyeGroup);
+
+            // Nose (Pink triangle nose, like 2D)
+            const nGeo = new T.SphereGeometry(0.09, 12, 10);
+            nGeo.scale(1.4, 1.0, 1.2);
+            nose = new T.Mesh(nGeo, toon(COL.nose));
+            nose.position.set(0.95, -0.2, 0);
+            nose.renderOrder = 11; nose.material.depthTest = false;
+            catHeadGroup.add(nose);
+
+            // Blush (Pink round circles on cheeks, prominent in 2D)
+            const blGeo = new T.CircleGeometry(0.18, 16);
+            const blMat = basic(COL.blush, { transparent: true, opacity: 0.55, depthTest: false });
+            blushL = new T.Mesh(blGeo, blMat);
+            blushL.position.set(0.65, -0.28, -0.65);
+            blushL.rotation.y = Math.PI / 2 + 0.2; blushL.renderOrder = 11;
+            catHeadGroup.add(blushL);
+            blushR = new T.Mesh(blGeo.clone(), blMat.clone());
+            blushR.position.set(0.65, -0.28, 0.65);
+            blushR.rotation.y = Math.PI / 2 - 0.2; blushR.renderOrder = 11;
+            catHeadGroup.add(blushR);
+
+            // Whiskers (Short and cute like 2D)
+            const wMat = new T.LineBasicMaterial({ color: 0x8B7355, linewidth: 1.5 });
+            whiskers = [];
+            [{ z: -0.30, dy: -0.06 }, { z: -0.25, dy: 0.04 }, { z: 0.30, dy: -0.06 }, { z: 0.25, dy: 0.04 }]
+                .forEach(w => {
+                    const line = new T.Line(
+                        new T.BufferGeometry().setFromPoints([new T.Vector3(0.80, -0.22, w.z), new T.Vector3(1.35, -0.22 + w.dy, w.z * 2.0)]),
+                        wMat
+                    );
+                    catHeadGroup.add(line);
+                    whiskers.push(line);
+                });
+
+            // Mouth (Cute smile like 2D)
+            const mCurve = new T.QuadraticBezierCurve3(
+                new T.Vector3(0.90, -0.28, -0.08), new T.Vector3(0.96, -0.33, 0), new T.Vector3(0.90, -0.28, 0.08)
+            );
+            mouth = new T.Mesh(new T.TubeGeometry(mCurve, 12, 0.015, 8), toon(COL.mouth));
+            mouth.renderOrder = 11; mouth.material.depthTest = false;
+            catHeadGroup.add(mouth);
+
+            const hCurve = new T.QuadraticBezierCurve3(
+                new T.Vector3(0.88, -0.25, -0.14), new T.Vector3(1.0, -0.38, 0), new T.Vector3(0.88, -0.25, 0.14)
+            );
+            happyMouth = new T.Mesh(new T.TubeGeometry(hCurve, 12, 0.018, 8), toon(COL.mouth));
+            happyMouth.visible = false;
+            happyMouth.renderOrder = 11; happyMouth.material.depthTest = false;
+            catHeadGroup.add(happyMouth);
+
+            // --- PROPELLER (At the NOSE of the airplane body, like 2D) ---
+            propellerGroup = new T.Group();
+            const spinner = new T.Mesh(new T.CylinderGeometry(0.12, 0.12, 0.15, 12), toon(0xE0A030));
+            spinner.rotation.z = Math.PI / 2;
+            propellerGroup.add(spinner);
+
+            const propBladeGeo = new T.BoxGeometry(0.05, 1.0, 0.06);
+            const bladeMat = toon(0x888888); // Silver blades like 2D
+            const propBlade1 = new T.Mesh(propBladeGeo, bladeMat);
+            const propBlade2 = new T.Mesh(propBladeGeo, bladeMat);
+            propBlade2.rotation.x = Math.PI / 2;
+            propellerGroup.add(propBlade1);
+            propellerGroup.add(propBlade2);
+
+            propellerGroup.position.set(1.45, -0.2, 0); // Front of the body-fuselage
+            catGroup.add(propellerGroup);
+
+            // --- AIRPLANE WINGS (White with orange stripes, like 2D concept!) ---
+            const buildPlaneWing = (zSide) => {
+                const wingGroup = new T.Group();
+                // Main wing surface (white/cream)
+                const wGeo = new T.BoxGeometry(0.7, 0.08, 1.2);
+                const wMesh = new T.Mesh(wGeo, toon(0xFFF5E0));
+                wingGroup.add(wMesh);
+                // Orange stripe on wing
+                const sGeo = new T.BoxGeometry(0.5, 0.09, 0.15);
+                const sMesh = new T.Mesh(sGeo, toon(COL.body));
+                sMesh.position.set(0, 0.01, zSide > 0 ? 0.3 : -0.3);
+                wingGroup.add(sMesh);
+                // Wing tip (rounded)
+                const tipGeo = new T.SphereGeometry(0.08, 8, 8);
+                tipGeo.scale(2, 0.5, 1);
+                const tipMesh = new T.Mesh(tipGeo, toon(0xFFF5E0));
+                tipMesh.position.set(0, 0, zSide > 0 ? 0.6 : -0.6);
+                wingGroup.add(tipMesh);
+                return wingGroup;
+            };
+            const planeWingL = buildPlaneWing(-1);
+            planeWingL.position.set(0.1, -0.55, -0.7);
+            planeWingL.rotation.z = -0.05;
+            catGroup.add(planeWingL);
+            const planeWingR = buildPlaneWing(1);
+            planeWingR.position.set(0.1, -0.55, 0.7);
+            planeWingR.rotation.z = 0.05;
+            catGroup.add(planeWingR);
+
+            // --- LANDING GEAR (Small wheels under the wings, like 2D!) ---
+            const wheelGeo = new T.CylinderGeometry(0.1, 0.1, 0.06, 16);
+            wheelGeo.rotateX(Math.PI / 2);
+            const wheelMat = toon(0x444444);
+            const wheelL = new T.Mesh(wheelGeo, wheelMat);
+            wheelL.position.set(0.1, -0.78, -0.5);
+            catGroup.add(wheelL);
+            const wheelR = new T.Mesh(wheelGeo.clone(), wheelMat);
+            wheelR.position.set(0.1, -0.78, 0.5);
+            catGroup.add(wheelR);
+            // Wheel struts
+            const strutGeo = new T.CylinderGeometry(0.02, 0.02, 0.2, 8);
+            const strutMat = toon(0x666666);
+            const strutL = new T.Mesh(strutGeo, strutMat);
+            strutL.position.set(0.1, -0.68, -0.5);
+            catGroup.add(strutL);
+            const strutR = new T.Mesh(strutGeo.clone(), strutMat);
+            strutR.position.set(0.1, -0.68, 0.5);
+            catGroup.add(strutR);
+
+            // --- ANGEL WINGS (Small white feathered wings on the cat's back, like 2D) ---
+            wingGroupL = new T.Group();
+            wingGroupR = new T.Group();
+            buildAngelWing(T, wingGroupL, COL, 1);
+            buildAngelWing(T, wingGroupR, COL, -1);
+            wingGroupL.position.set(-0.5, 0.55, -0.5);
+            wingGroupL.scale.setScalar(0.55);
+            wingGroupR.position.set(-0.5, 0.55, 0.5);
+            wingGroupR.scale.setScalar(0.55);
+            catGroup.add(wingGroupL);
+            catGroup.add(wingGroupR);
+
+            // --- TAIL (Striped fluffy tail curling upward, like 2D) ---
+            tailGroup = new T.Group();
+            tailSegments = [];
+
+            const tailCurve = new T.CatmullRomCurve3([
+                new T.Vector3(0, 0, 0),
+                new T.Vector3(-0.4, 0.5, 0),
+                new T.Vector3(-0.7, 1.0, 0),
+                new T.Vector3(-0.5, 1.4, 0),
+                new T.Vector3(-0.2, 1.5, 0)
+            ]);
+            const tailGeo = new T.TubeGeometry(tailCurve, 24, 0.2, 12, false);
+            const tailMesh = new T.Mesh(tailGeo, toon(COL.body));
+            tailGroup.add(tailMesh);
+
+            // Tail stripes (dark rings on the tail, like 2D)
+            const tailPts = tailCurve.getPoints(6);
+            for (let i = 1; i < tailPts.length; i += 2) {
+                const tRing = new T.Mesh(
+                    new T.TorusGeometry(0.2, 0.04, 6, 16),
+                    toon(COL.bodyDark)
+                );
+                tRing.position.copy(tailPts[i]);
+                const dir = new T.Vector3().subVectors(tailPts[Math.min(i + 1, tailPts.length - 1)], tailPts[Math.max(i - 1, 0)]).normalize();
+                tRing.lookAt(tRing.position.clone().add(dir));
+                tailGroup.add(tRing);
+            }
+
+            // Tail tip (round fluffy end)
+            const tailTip = new T.Mesh(new T.SphereGeometry(0.2, 12, 12), toon(COL.body));
+            tailTip.position.copy(tailPts[tailPts.length - 1]);
+            tailGroup.add(tailTip);
+
+            tailGroup.position.set(-0.95, 0.0, 0);
+            catGroup.add(tailGroup);
+
+            // --- PAWS (Stubby little paws underneath, like 2D) ---
+            paws = [];
+            [{ x: 0.5, y: -0.95, z: -0.35 }, { x: 0.5, y: -0.95, z: 0.35 },
+            { x: -0.4, y: -0.9, z: -0.3 }, { x: -0.4, y: -0.9, z: 0.3 }]
+                .forEach(pos => {
+                    const p = new T.Mesh(new T.SphereGeometry(0.18, 10, 8), toon(COL.paw));
+                    p.position.set(pos.x, pos.y, pos.z); p.scale.set(1.0, 0.5, 0.8);
+                    catGroup.add(p);
+                    const pad = new T.Mesh(new T.CircleGeometry(0.08, 10), toon(COL.pad));
+                    pad.position.set(pos.x, pos.y - 0.1, pos.z); pad.rotation.x = -Math.PI / 2;
+                    catGroup.add(pad);
+                    for (let t = 0; t < 3; t++) {
+                        const bean = new T.Mesh(new T.CircleGeometry(0.03, 8), toon(COL.pad));
+                        const ang = (t - 1) * 0.35;
+                        bean.position.set(pos.x + Math.sin(ang) * 0.06, pos.y - 0.1, pos.z + Math.cos(ang) * 0.05);
+                        bean.rotation.x = -Math.PI / 2;
+                        catGroup.add(bean);
+                    }
+                    paws.push(p);
+                });
+
+            catGroup.rotation.y = -0.3;
+            catGroup.userData.headGroup = catHeadGroup;
+        }
+
+        // ====== GLB LOADING ======
+        function loadGLBFromData(arrayBuffer, name) {
+            const T = THREE;
+            const loader = new T.GLTFLoader();
+            loader.parse(arrayBuffer, '', (gltf) => {
+                // Remove old model
+                if (catGroup) { scene.remove(catGroup); }
+                mode = 'glb';
+                glbModel = gltf.scene;
+
+                // Auto-fit
+                const box = new T.Box3().setFromObject(glbModel);
+                const sz = box.getSize(new T.Vector3());
+                const center = box.getCenter(new T.Vector3());
+                const maxDim = Math.max(sz.x, sz.y, sz.z);
+                const scale = 3.5 / maxDim;
+                glbModel.scale.setScalar(scale);
+                glbModel.position.sub(center.multiplyScalar(scale));
+                glbModel.position.y -= 0.2;
+
+                glbModel.traverse(child => {
+                    if (child.isMesh) {
+                        const hasVertexColors = child.geometry && child.geometry.attributes.color;
+                        if (hasVertexColors) {
+                            // Use unlit material (MeshBasicMaterial) to display TripoSR vertex colors at full brightness
+                            child.material = new T.MeshBasicMaterial({
+                                vertexColors: true,
+                                side: T.DoubleSide,
+                            });
+                        } else if (child.material) {
+                            child.material.side = T.DoubleSide;
+                        }
+                    }
+                });
+
+                // Reset renderer to defaults for GLB mode
+                renderer.toneMapping = T.NoToneMapping;
+                renderer.toneMappingExposure = 1.0;
+
+                catGroup = new T.Group();
+                catGroup.add(glbModel);
+                catGroup.rotation.y = -0.3;
+                scene.add(catGroup);
+
+                // Animations
+                if (gltf.animations && gltf.animations.length > 0) {
+                    mixer = new T.AnimationMixer(glbModel);
+                    gltf.animations.forEach(clip => mixer.clipAction(clip).play());
+                }
+
+                document.getElementById('status').innerHTML = `✅ GLB loaded: <b>${name}</b> <span class="mode-tag mode-glb">GLB Mode</span>`;
+                console.log(`[Preview] GLB loaded: ${name}`);
+            }, (err) => {
+                document.getElementById('status').textContent = '❌ Failed to load GLB: ' + err;
+                console.error(err);
+            });
+        }
+
+        function loadGLBFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => loadGLBFromData(e.target.result, file.name);
+            reader.readAsArrayBuffer(file);
+        }
+
+        function switchToProcedural() {
+            if (catGroup) scene.remove(catGroup);
+            mode = 'procedural'; glbModel = null; mixer = null;
+            catGroup = new T.Group();
+            buildCat(THREE);
+            scene.add(catGroup);
+            document.getElementById('status').innerHTML = '✅ Procedural chibi cat <span class="mode-tag mode-procedural">Procedural</span>';
+        }
+
+        // ====== INIT ======
+        function init() {
+            const T = THREE;
+            const canvas = document.getElementById('preview-canvas');
+            renderer = new T.WebGLRenderer({ canvas, alpha: true, antialias: true, premultipliedAlpha: false });
+            renderer.setSize(512, 512); renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setClearColor(0x000000, 0);
+            scene = new T.Scene();
+            const f = 3.0;
+            camera = new T.OrthographicCamera(-f, f, f, -f, 0.1, 100);
+            camera.position.set(0, 0.2, 8); camera.lookAt(0, 0.1, 0);
+            scene.add(new T.AmbientLight(0xfff5ec, 0.85));
+            const k = new T.DirectionalLight(0xfffaf0, 0.45); k.position.set(3, 4, 5); scene.add(k);
+            const r = new T.DirectionalLight(0xc0d8ff, 0.35); r.position.set(-3, 2, -3); scene.add(r);
+            const fl = new T.DirectionalLight(0xffe8d8, 0.2); fl.position.set(0, -2, 3); scene.add(fl);
+
+            genEyeTextures(T);
+            catGroup = new T.Group();
+            buildCat(T);
+            scene.add(catGroup);
+            document.getElementById('status').innerHTML = '✅ Procedural chibi cat <span class="mode-tag mode-procedural">Procedural</span>';
+            animate();
+        }
+
+        // ====== DRAG & DROP ======
+        const container = document.getElementById('preview-container');
+        container.addEventListener('dragover', (e) => { e.preventDefault(); container.classList.add('drag-over'); });
+        container.addEventListener('dragleave', () => container.classList.remove('drag-over'));
+        container.addEventListener('drop', (e) => {
+            e.preventDefault(); container.classList.remove('drag-over');
+            const file = e.dataTransfer.files[0];
+            if (file && (file.name.endsWith('.glb') || file.name.endsWith('.gltf'))) {
+                const reader = new FileReader();
+                reader.onload = (ev) => loadGLBFromData(ev.target.result, file.name);
+                reader.readAsArrayBuffer(file);
+            }
+        });
+
+        // ====== AUTO-LOAD from URL param (?load=relative/path/to/model.glb) ======
+        (function autoLoadFromURL() {
+            const params = new URLSearchParams(window.location.search);
+            const loadPath = params.get('load');
+            if (!loadPath) return;
+            document.getElementById('status').textContent = '⏳ Loading: ' + loadPath;
+            fetch(loadPath)
+                .then(r => {
+                    if (!r.ok) throw new Error(`HTTP ${r.status}: ${loadPath}`);
+                    return r.arrayBuffer();
+                })
+                .then(buf => loadGLBFromData(buf, loadPath.split('/').pop()))
+                .catch(err => {
+                    document.getElementById('status').textContent = '❌ Auto-load failed: ' + err.message;
+                    console.error(err);
+                });
+        })();
+
+        // ====== CONTROLS ======
+        function setExpression(expr) {
+            expression = expr;
+            if (expr === 'excited') speed = 800; else if (expr === 'worried') speed = 600;
+            else speed = parseFloat(document.getElementById('speedSlider').value);
+            launched = speed > 0;
+            document.querySelectorAll('.btn:not(.btn-glb)').forEach(b => b.classList.remove('btn-active'));
+            const el = document.querySelector(`.btn-${expr}`); if (el) el.classList.add('btn-active');
+        }
+        function triggerBlink() { forceBlink = true; setTimeout(() => { forceBlink = false; }, 200); }
+
+        // ====== ANIMATE ======
+        function animate() {
+            requestAnimationFrame(animate);
+            const dt = 1 / 60; time += dt;
+            if (!catGroup) return;
+
+            const sliderSpeed = parseFloat(document.getElementById('speedSlider').value);
+            if (expression === 'idle') { speed = sliderSpeed; launched = speed > 0; }
+            document.getElementById('speedVal').textContent = Math.round(speed) + ' km/h';
+
+            const rotY = parseFloat(document.getElementById('rotateSlider').value);
+            document.getElementById('rotateVal').textContent = rotY + '°';
+            const rotX = parseFloat(document.getElementById('rotateXSlider').value);
+            document.getElementById('rotateXVal').textContent = rotX + '°';
+            const zoom = parseFloat(document.getElementById('zoomSlider').value) / 10;
+            document.getElementById('zoomVal').textContent = zoom.toFixed(1);
+            camera.left = -zoom; camera.right = zoom; camera.top = zoom; camera.bottom = -zoom;
+            camera.updateProjectionMatrix();
+
+            // GLB mode
+            if (mode === 'glb') {
+                if (mixer) mixer.update(dt);
+                catGroup.rotation.y = rotY * Math.PI / 180;
+                catGroup.rotation.x = rotX * Math.PI / 180;
+                catGroup.position.y = Math.sin(time * 1.8) * 0.05;
+                renderer.render(scene, camera);
+                return;
+            }
+
+            // Procedural mode
+            catGroup.rotation.y = rotY * Math.PI / 180;
+            catGroup.rotation.x = rotX * Math.PI / 180;
+            const sR = launched ? speed / 1000 : 0.15, t = time;
+
+            blinkTimer += dt;
+            if (blinkTimer >= blinkInterval && !isBlinking) { isBlinking = true; blinkTimer = 0; blinkInterval = 2.5 + Math.random() * 3; }
+            if (isBlinking) { blinkTimer += dt; if (blinkTimer >= 0.13) { isBlinking = false; blinkTimer = 0; } }
+
+            if (forceBlink || isBlinking) setEyeTexture('blink');
+            else if (expression === 'excited') setEyeTexture('excited');
+            else if (expression === 'happy') setEyeTexture('happy');
+            else if (expression === 'worried') setEyeTexture('worried');
+            else setEyeTexture('idle');
+
+            const eP = expression === 'excited' ? 1 + Math.sin(t * 5) * 0.1 : 1;
+            if (eyeL) eyeL.scale.setScalar(eP);
+            if (eyeR) eyeR.scale.setScalar(eP);
+
+            const isH = expression === 'happy' || expression === 'excited';
+            const bO = isH ? 0.55 + Math.sin(t * 3) * 0.15 : 0.3;
+            if (blushL && blushL.material) blushL.material.opacity = bO;
+            if (blushR && blushR.material) blushR.material.opacity = bO;
+            if (mouth) mouth.visible = !isH;
+            if (happyMouth) happyMouth.visible = isH;
+
+            // Wings
+            const flapSpeed = 4.5 + sR * 10;
+            const flapAmt = 0.45 + sR * 0.65;
+            const wBase = Math.sin(t * flapSpeed) * flapAmt;
+            const wSec = Math.sin(t * flapSpeed * 1.6) * 0.12;
+            if (wingGroupL) {
+                wingGroupL.rotation.x = -wBase - wSec - 0.25;
+                wingGroupR.rotation.x = wBase + wSec + 0.25;
+                wingGroupL.rotation.z = Math.sin(t * flapSpeed) * 0.15;
+                wingGroupR.rotation.z = -Math.sin(t * flapSpeed) * 0.15;
+            }
+
+            // Propeller
+            if (propellerGroup) {
+                const propSpeed = launched ? 25 + sR * 30 : 5;
+                propellerGroup.rotation.x += propSpeed * dt;
+            }
+
+            // Tail wiggle
+            if (tailGroup) {
+                const tailSpd = 3.0 + sR * 5.0;
+                const tailPhase = t * tailSpd;
+                tailGroup.rotation.x = Math.sin(tailPhase) * 0.2;
+                tailGroup.rotation.y = Math.cos(tailPhase * 0.8) * 0.15;
+                tailGroup.rotation.z = Math.sin(tailPhase * 1.5) * 0.1;
+            }
+
+            if (body) {
+                if (launched) {
+                    const st = 1 + sR * 0.05, sq = 1 - sR * 0.05;
+                    body.scale.set(st, sq, sq);
+                } else {
+                    const br = Math.sin(t * 1.8) * 0.02;
+                    body.scale.set(1 + br, 1 - br * 0.2, 1 + br * 0.1);
+                }
+            }
+
+            catGroup.position.y = Math.sin(t * (launched ? 3.5 : 1.8)) * (launched ? 0.035 : 0.055);
+            if (catGroup.userData.headGroup) {
+                catGroup.userData.headGroup.position.y = 0.85 + Math.sin(t * 2.8 + 0.5) * 0.03;
+                catGroup.userData.headGroup.rotation.z = Math.sin(t * 1.2) * 0.03;
+            }
+
+            const eW = isH ? Math.sin(t * 7) * 0.15 : Math.sin(t * 1.5) * 0.04, eP2 = expression === 'worried' ? -0.18 : (expression === 'excited' ? 0.1 : 0);
+            if (earL) { earL.rotation.x = eW + eP2; earR.rotation.x = -eW + eP2; }
+
+            if (launched) { paws.forEach((p, i) => { const ph = t * 4 + i * Math.PI / 2; p.position.y = -0.55 + Math.sin(ph) * 0.12; p.position.x = (i < 2 ? 0.8 : -0.6) + Math.cos(ph) * 0.05; }); }
+            else { paws.forEach((p, i) => { p.position.y = -0.6 + Math.sin(t * 1.3 + i * 0.7) * 0.02; }); }
+            whiskers.forEach((w, i) => { w.rotation.y = Math.sin(t * 4.5 + i * 1.3) * 0.035; });
+
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('load', init);
+    </script>
+</body>
+
+</html>
