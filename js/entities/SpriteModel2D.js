@@ -21,7 +21,7 @@ export class SpriteModel2D {
         this.ctx = this.canvas.getContext('2d');
 
         // Sprite configurations — multi-frame per state
-        const prefix = spriteConfig === 'cat' ? 'cat' : 'panda';
+        const prefix = spriteConfig; // 'cat', 'panda', or 'labrador'
         this.animations = {
             fly:          { frames: [`${prefix}_fly_1`, `${prefix}_fly_2`, `${prefix}_fly_1`, `${prefix}_fly_3`], speed: 0.12 },
             ascend:       { frames: [`${prefix}_ascend_1`, `${prefix}_ascend_2`], speed: 0.15 },

@@ -59,6 +59,8 @@ export class WorldMapScene {
             cat_idle: 'assets/sprites/cat_neutral.png',
             panda_card: 'assets/sprites/panda_happy.png',
             panda_idle: 'assets/sprites/panda_neutral.png',
+            labrador_card: 'assets/sprites/labrador_happy.png',
+            labrador_idle: 'assets/sprites/labrador_fly_1.png',
         };
         Object.entries(assets).forEach(([key, src]) => {
             const img = new Image();
@@ -94,11 +96,11 @@ export class WorldMapScene {
         const w = this.canvas.width;
         const h = this.canvas.height;
 
-        // Card layout
-        const cardW = Math.min(w * 0.35, 180);
+        // Card layout — 3 cards
+        const cardW = Math.min(w * 0.25, 160);
         const cardH = cardW * 1.35;
-        const gap = Math.min(w * 0.06, 30);
-        const totalW = cardW * 2 + gap;
+        const gap = Math.min(w * 0.04, 24);
+        const totalW = cardW * 3 + gap * 2;
         const startX = (w - totalW) / 2;
         const cardY = h * 0.22;
 
@@ -116,6 +118,10 @@ export class WorldMapScene {
             // Panda card
             if (pointInRect(click.x, click.y, startX + cardW + gap, cardY, cardW, cardH)) {
                 this.selectedCharacter = 'panda';
+            }
+            // Labrador card
+            if (pointInRect(click.x, click.y, startX + (cardW + gap) * 2, cardY, cardW, cardH)) {
+                this.selectedCharacter = 'labrador';
             }
             // GO button
             if (pointInRect(click.x, click.y, btnX, btnY, btnW, btnH)) {
@@ -185,10 +191,10 @@ export class WorldMapScene {
     }
 
     _drawCharacterCards(ctx, w, h) {
-        const cardW = Math.min(w * 0.35, 180);
+        const cardW = Math.min(w * 0.25, 160);
         const cardH = cardW * 1.35;
-        const gap = Math.min(w * 0.06, 30);
-        const totalW = cardW * 2 + gap;
+        const gap = Math.min(w * 0.04, 24);
+        const totalW = cardW * 3 + gap * 2;
         const startX = (w - totalW) / 2;
         const cardY = h * 0.22;
         const pulse = breathe(this.time, 2);
@@ -196,6 +202,7 @@ export class WorldMapScene {
         const chars = [
             { key: 'cat', name: '小橘', sub: 'Ginger Cat', emoji: '🐱', color: '#FFA726' },
             { key: 'panda', name: '胖達', sub: 'Panda', emoji: '🐼', color: '#78909C' },
+            { key: 'labrador', name: '旺財', sub: 'Labrador', emoji: '🐕', color: '#D4A574' },
         ];
 
         chars.forEach((char, i) => {

@@ -51,7 +51,7 @@ export class Plane {
 
         // Character model — always 2D sprite
         this.characterType = characterType;
-        this.catModel = new SpriteModel2D(256, characterType === 'panda' ? 'panda' : 'cat');
+        this.catModel = new SpriteModel2D(256, characterType);
     }
 
     launch(pullX, pullY) {
