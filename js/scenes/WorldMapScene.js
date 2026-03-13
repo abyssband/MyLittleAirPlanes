@@ -1,8 +1,17 @@
 // ===== Character Select Scene =====
 // Replaces the old route-selection world map
-// Player picks cat or panda, then auto-starts the first available route
+// Player picks a character, then auto-starts the first available route
 import { AIRPORTS, ROUTES, getAirport } from '../data/routes.js';
 import { easeOutCubic, easeOutElastic, breathe, pointInRect, roundRect } from '../utils/helpers.js';
+
+// ====== CHARACTER REGISTRY (single source of truth) ======
+// To add a new character: just add an entry here + 12 sprites in assets/sprites/
+export const CHARACTERS = [
+    { key: 'cat',      name: '小橘', sub: 'Ginger Cat', emoji: '🐱', color: '#FFA726' },
+    { key: 'panda',    name: '胖達', sub: 'Panda',      emoji: '🐼', color: '#78909C' },
+    { key: 'labrador', name: '旺財', sub: 'Labrador',   emoji: '🐕', color: '#D4A574' },
+    { key: 'rabbit',   name: '棉花', sub: 'Rabbit',     emoji: '🐰', color: '#F8BBD0' },
+];
 
 export class WorldMapScene {
     constructor(ctx, canvas, input) {
@@ -54,14 +63,12 @@ export class WorldMapScene {
     }
 
     _loadCharacterImages() {
-        const assets = {
-            cat_card: 'assets/sprites/cat_happy.png',
-            cat_idle: 'assets/sprites/cat_neutral.png',
-            panda_card: 'assets/sprites/panda_happy.png',
-            panda_idle: 'assets/sprites/panda_neutral.png',
-            labrador_card: 'assets/sprites/labrador_happy.png',
-            labrador_idle: 'assets/sprites/labrador_fly_1.png',
-        };
+        // Auto-generate from CHARACTERS registry
+        const assets = {};
+        CHARACTERS.forEach(c => {
+            assets[`${c.key}_card`] = `assets/sprites/${c.key}_happy.png`;
+            assets[`${c.key}_idle`] = `assets/sprites/${c.key}_fly_1.png`;
+        });
         Object.entries(assets).forEach(([key, src]) => {
             const img = new Image();
             img.src = src;
@@ -96,11 +103,12 @@ export class WorldMapScene {
         const w = this.canvas.width;
         const h = this.canvas.height;
 
-        // Card layout — 3 cards
-        const cardW = Math.min(w * 0.25, 160);
+        // Card layout — dynamic based on character count
+        const n = CHARACTERS.length;
+        const cardW = Math.min(w * (0.7 / n), 160);
         const cardH = cardW * 1.35;
         const gap = Math.min(w * 0.04, 24);
-        const totalW = cardW * 3 + gap * 2;
+        const totalW = cardW * n + gap * (n - 1);
         const startX = (w - totalW) / 2;
         const cardY = h * 0.22;
 
@@ -111,18 +119,13 @@ export class WorldMapScene {
         const btnY = h - 90;
 
         clicks.forEach(click => {
-            // Cat card
-            if (pointInRect(click.x, click.y, startX, cardY, cardW, cardH)) {
-                this.selectedCharacter = 'cat';
-            }
-            // Panda card
-            if (pointInRect(click.x, click.y, startX + cardW + gap, cardY, cardW, cardH)) {
-                this.selectedCharacter = 'panda';
-            }
-            // Labrador card
-            if (pointInRect(click.x, click.y, startX + (cardW + gap) * 2, cardY, cardW, cardH)) {
-                this.selectedCharacter = 'labrador';
-            }
+            // Character card clicks — data-driven
+            CHARACTERS.forEach((char, i) => {
+                const cx = startX + i * (cardW + gap);
+                if (pointInRect(click.x, click.y, cx, cardY, cardW, cardH)) {
+                    this.selectedCharacter = char.key;
+                }
+            });
             // GO button
             if (pointInRect(click.x, click.y, btnX, btnY, btnW, btnH)) {
                 const route = this._getNextRoute();
@@ -191,19 +194,16 @@ export class WorldMapScene {
     }
 
     _drawCharacterCards(ctx, w, h) {
-        const cardW = Math.min(w * 0.25, 160);
+        const n = CHARACTERS.length;
+        const cardW = Math.min(w * (0.7 / n), 160);
         const cardH = cardW * 1.35;
         const gap = Math.min(w * 0.04, 24);
-        const totalW = cardW * 3 + gap * 2;
+        const totalW = cardW * n + gap * (n - 1);
         const startX = (w - totalW) / 2;
         const cardY = h * 0.22;
         const pulse = breathe(this.time, 2);
 
-        const chars = [
-            { key: 'cat', name: '小橘', sub: 'Ginger Cat', emoji: '🐱', color: '#FFA726' },
-            { key: 'panda', name: '胖達', sub: 'Panda', emoji: '🐼', color: '#78909C' },
-            { key: 'labrador', name: '旺財', sub: 'Labrador', emoji: '🐕', color: '#D4A574' },
-        ];
+        const chars = CHARACTERS;
 
         chars.forEach((char, i) => {
             const cx = startX + i * (cardW + gap);
