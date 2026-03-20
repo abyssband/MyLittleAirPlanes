@@ -1,0 +1,19 @@
+{
+  "characters": [
+    { "key": "cat",      "name": "小橘", "sub": "Ginger Cat", "emoji": "🐱", "color": "#FFA726" },
+    { "key": "panda",    "name": "胖達", "sub": "Panda",      "emoji": "🐼", "color": "#78909C" },
+    { "key": "labrador", "name": "旺財", "sub": "Labrador",   "emoji": "🐕", "color": "#D4A574" },
+    { "key": "rabbit",   "name": "棉花", "sub": "Rabbit",     "emoji": "🐰", "color": "#F8BBD0" }
+  ],
+  "animations": {
+    "fly":          { "frames": ["fly_1", "fly_2", "fly_3", "fly_4", "fly_5", "fly_6", "fly_5", "fly_4", "fly_3", "fly_2"], "speed": 0.10 },
+    "ascend":       { "frames": ["ascend_1", "ascend_2", "ascend_3", "ascend_4", "ascend_5", "ascend_6", "ascend_5", "ascend_4", "ascend_3", "ascend_2"], "speed": 0.12 },
+    "descend":      { "frames": ["descend_1", "descend_2", "descend_3", "descend_4", "descend_5", "descend_6", "descend_5", "descend_4", "descend_3", "descend_2"], "speed": 0.14 },
+    "happy":        { "frames": ["happy"], "speed": 0.3 },
+    "hit":          { "frames": ["hit"], "speed": 0.5 },
+    "crash":        { "frames": ["crash"], "speed": 0.5 },
+    "land_success": { "frames": ["land_success"], "speed": 0.5 },
+    "land_fail":    { "frames": ["land_fail"], "speed": 0.5 },
+    "idle":         { "frames": ["idle"], "speed": 0.5 }
+  }
+}

@@ -4,14 +4,9 @@
 import { AIRPORTS, ROUTES, getAirport } from '../data/routes.js';
 import { easeOutCubic, easeOutElastic, breathe, pointInRect, roundRect } from '../utils/helpers.js';
 
-// ====== CHARACTER REGISTRY (single source of truth) ======
-// To add a new character: just add an entry here + 12 sprites in assets/sprites/
-export const CHARACTERS = [
-    { key: 'cat',      name: '小橘', sub: 'Ginger Cat', emoji: '🐱', color: '#FFA726' },
-    { key: 'panda',    name: '胖達', sub: 'Panda',      emoji: '🐼', color: '#78909C' },
-    { key: 'labrador', name: '旺財', sub: 'Labrador',   emoji: '🐕', color: '#D4A574' },
-    { key: 'rabbit',   name: '棉花', sub: 'Rabbit',     emoji: '🐰', color: '#F8BBD0' },
-];
+// ====== CHARACTER REGISTRY ======
+// Characters are dynamically loaded from assets/data/config.json
+export const getCharacters = () => window.GAME_DATA?.characters || [];
 
 export class WorldMapScene {
     constructor(ctx, canvas, input) {
@@ -63,9 +58,9 @@ export class WorldMapScene {
     }
 
     _loadCharacterImages() {
-        // Auto-generate from CHARACTERS registry
+        // Auto-generate from characters registry
         const assets = {};
-        CHARACTERS.forEach(c => {
+        getCharacters().forEach(c => {
             assets[`${c.key}_card`] = `assets/sprites/${c.key}_happy.png`;
             assets[`${c.key}_idle`] = `assets/sprites/${c.key}_fly_1.png`;
         });
@@ -104,7 +99,7 @@ export class WorldMapScene {
         const h = this.canvas.height;
 
         // Card layout — dynamic based on character count
-        const n = CHARACTERS.length;
+        const n = Math.max(1, getCharacters().length);
         const cardW = Math.min(w * (0.7 / n), 160);
         const cardH = cardW * 1.35;
         const gap = Math.min(w * 0.04, 24);
@@ -120,7 +115,7 @@ export class WorldMapScene {
 
         clicks.forEach(click => {
             // Character card clicks — data-driven
-            CHARACTERS.forEach((char, i) => {
+            getCharacters().forEach((char, i) => {
                 const cx = startX + i * (cardW + gap);
                 if (pointInRect(click.x, click.y, cx, cardY, cardW, cardH)) {
                     this.selectedCharacter = char.key;
@@ -194,7 +189,8 @@ export class WorldMapScene {
     }
 
     _drawCharacterCards(ctx, w, h) {
-        const n = CHARACTERS.length;
+        const chars = getCharacters();
+        const n = Math.max(1, chars.length);
         const cardW = Math.min(w * (0.7 / n), 160);
         const cardH = cardW * 1.35;
         const gap = Math.min(w * 0.04, 24);
@@ -202,8 +198,6 @@ export class WorldMapScene {
         const startX = (w - totalW) / 2;
         const cardY = h * 0.22;
         const pulse = breathe(this.time, 2);
-
-        const chars = CHARACTERS;
 
         chars.forEach((char, i) => {
             const cx = startX + i * (cardW + gap);

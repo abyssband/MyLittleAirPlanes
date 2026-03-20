@@ -106,6 +106,12 @@ class Game {
 }
 
 // Boot
-window.addEventListener('DOMContentLoaded', () => {
-    new Game();
+window.addEventListener('DOMContentLoaded', async () => {
+    try {
+        const response = await fetch('assets/data/config.json');
+        window.GAME_DATA = await response.json();
+        new Game();
+    } catch (e) {
+        console.error("Failed to load config.json:", e);
+    }
 });

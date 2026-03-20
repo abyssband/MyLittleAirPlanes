@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Sprite Animation Previewer</title>
+    <style>
+        body { 
+            background: #222; 
+            color: white; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            padding: 20px; 
+            margin: 0;
+        }
+        .header { margin-bottom: 20px; text-align: center; }
+        .header h1 { margin: 0; font-size: 24px; color: #4ade80; }
+        .header p { margin: 5px 0 0 0; color: #94a3b8; font-size: 14px; }
+        
+        .main-container {
+            display: flex;
+            gap: 30px;
+            align-items: flex-start;
+        }
+
+        .canvas-container {
+            background: #333; 
+            border: 2px solid #555; 
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            position: relative;
+        }
+
+        canvas { 
+            image-rendering: pixelated; 
+            display: block;
+        }
+
+        .overlay {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.7);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 14px;
+            pointer-events: none;
+        }
+
+        .controls { 
+            display: flex; 
+            flex-direction: column;
+            gap: 15px;
+            background: #333;
+            padding: 20px;
+            border-radius: 12px;
+            min-width: 250px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #94a3b8;
+            font-weight: bold;
+        }
+
+        select, button, input { 
+            padding: 10px; 
+            font-size: 14px; 
+            border-radius: 6px;
+            border: 1px solid #444;
+            background: #222;
+            color: white;
+            cursor: pointer;
+            outline: none;
+        }
+        select:focus, button:focus { border-color: #4ade80; }
+        button:hover { background: #444; }
+        button:active { background: #555; }
+
+        .btn-row {
+            display: flex;
+            gap: 10px;
+        }
+        .btn-row button {
+            flex: 1;
+        }
+
+        .play-btn {
+            background: #4ade80 !important;
+            color: black !important;
+            font-weight: bold;
+            border: none;
+        }
+        .play-btn:hover { background: #22c55e !important; }
+
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            color: #ccc;
+            cursor: pointer;
+        }
+        .toggle-row input {
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>✈️ Sprite Previewer</h1>
+        <p>Inspect animation fluidity and frame alignment</p>
+    </div>
+
+    <div class="main-container">
+        <div class="canvas-container">
+            <canvas id="canvas" width="512" height="512"></canvas>
+            <div id="frameInfo" class="overlay">Frame: 0 / 0</div>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label>Character</label>
+                <select id="charSelect">
+                    <option value="cat">🐱 小橘 (Cat)</option>
+                    <option value="panda">🐼 胖達 (Panda)</option>
+                    <option value="labrador">🐕 旺財 (Labrador)</option>
+                    <option value="rabbit">🐰 棉花 (Rabbit)</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>Animation State</label>
+                <select id="animSelect">
+                    <optgroup label="Action Cycles (5 Frames)">
+                        <option value="fly">Fly (平飛)</option>
+                        <option value="ascend">Ascend (爬升)</option>
+                        <option value="descend">Descend (俯衝)</option>
+                    </optgroup>
+                    <optgroup label="Static Poses">
+                        <option value="happy">Happy (歡呼)</option>
+                        <option value="hit">Hit (受擊)</option>
+                        <option value="crash">Crash (墜毀)</option>
+                        <option value="land_success">Land Success (著陸成功)</option>
+                        <option value="land_fail">Land Fail (著陸失敗)</option>
+                    </optgroup>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>Playback</label>
+                <button id="playBtn" class="play-btn">Pause</button>
+                <div class="btn-row">
+                    <button id="prevBtn">◀ Prev Frame</button>
+                    <button id="nextBtn">Next Frame ▶</button>
+                </div>
+            </div>
+
+            <div class="control-group" style="margin-top: 10px;">
+                <label>Display Options</label>
+                <label class="toggle-row">
+                    <input type="checkbox" id="gridToggle" checked>
+                    Show Center Crosshair
+                </label>
+                <label class="toggle-row">
+                    <input type="checkbox" id="bgToggle">
+                    Show Grid Background
+                </label>
+            </div>
+            
+            <div class="control-group" style="margin-top: 10px;">
+                <label>Speed Modifier (ms)</label>
+                <input type="range" id="speedSlider" min="20" max="300" value="100">
+                <div id="speedVal" style="text-align: right; color: #94a3b8; font-size: 12px;">100 ms/frame</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ANIMATIONS = {};
+
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        let currentCharacter = 'cat';
+        let currentAnimation = 'fly';
+        let frameIndex = 0;
+        let isPlaying = true;
+        let lastTime = 0;
+        let images = {}; // Image cache
+        let dynamicSpeed = 100;
+        
+        function loadImage(src) {
+            if (images[src]) return Promise.resolve(images[src]);
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => { images[src] = img; resolve(img); };
+                img.onerror = () => { console.error("Failed to load", src); resolve(null); };
+                img.src = src;
+            });
+        }
+
+        async function preloadCurrentAnimation() {
+            const prefix = currentCharacter;
+            const frames = ANIMATIONS[currentAnimation];
+            const promises = frames.map(f => loadImage(`assets/sprites/${prefix}_${f}.png`));
+            await Promise.all(promises);
+        }
+
+        function drawGrid() {
+            if (document.getElementById('bgToggle').checked) {
+                // Checkerboard
+                const size = 32;
+                for (let i = 0; i < 512; i += size) {
+                    for (let j = 0; j < 512; j += size) {
+                        ctx.fillStyle = ((i/size + j/size) % 2 === 0) ? '#444' : '#333';
+                        ctx.fillRect(i, j, size, size);
+                    }
+                }
+            } else {
+                ctx.fillStyle = '#333';
+                ctx.fillRect(0, 0, 512, 512);
+            }
+
+            if (document.getElementById('gridToggle').checked) {
+                ctx.strokeStyle = 'rgba(255, 60, 60, 0.8)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(256, 0); ctx.lineTo(256, 512); // Vertical
+                ctx.moveTo(0, 256); ctx.lineTo(512, 256); // Horizontal
+                ctx.stroke();
+                
+                // Helper box (256x256)
+                ctx.strokeStyle = 'rgba(74, 222, 128, 0.4)';
+                ctx.strokeRect(128, 128, 256, 256);
+            }
+        }
+
+        function render() {
+            drawGrid();
+
+            const prefix = currentCharacter;
+            const frames = ANIMATIONS[currentAnimation];
+            if (frameIndex >= frames.length) frameIndex = 0;
+            if (frameIndex < 0) frameIndex = frames.length - 1;
+            
+            const frameName = frames[frameIndex];
+            const src = `assets/sprites/${prefix}_${frameName}.png`;
+            const img = images[src];
+            
+            if (img) {
+                ctx.drawImage(img, 0, 0, 512, 512);
+            } else {
+                ctx.fillStyle = 'red';
+                ctx.font = '20px sans-serif';
+                ctx.fillText('Image Missing:', 180, 240);
+                ctx.fillText(frameName, 180, 270);
+            }
+            
+            document.getElementById('frameInfo').innerText = `${frameName}.png (${frameIndex + 1}/${frames.length})`;
+        }
+
+        // Main animation loop
+        function loop(timestamp) {
+            if (isPlaying) {
+                if (timestamp - lastTime > dynamicSpeed) {
+                    frameIndex++;
+                    const frames = ANIMATIONS[currentAnimation];
+                    if (frameIndex >= frames.length) frameIndex = 0;
+                    render();
+                    lastTime = timestamp;
+                }
+            }
+            requestAnimationFrame(loop);
+        }
+
+        async function changeAnimation() {
+            frameIndex = 0;
+            await preloadCurrentAnimation();
+            render();
+            if (currentAnimation === 'happy' || currentAnimation === 'hit' || currentAnimation === 'crash' || currentAnimation.startsWith('land')) {
+                isPlaying = false; // Auto pause for static
+                document.getElementById('playBtn').innerText = 'Play';
+                document.getElementById('playBtn').style.background = '#222';
+                document.getElementById('playBtn').style.color = '#fff';
+            } else {
+                isPlaying = true;
+                document.getElementById('playBtn').innerText = 'Pause';
+                document.getElementById('playBtn').style.background = '#4ade80';
+                document.getElementById('playBtn').style.color = '#000';
+            }
+        }
+
+        // Event Listeners
+        document.getElementById('charSelect').addEventListener('change', (e) => {
+            currentCharacter = e.target.value;
+            changeAnimation();
+        });
+        
+        document.getElementById('animSelect').addEventListener('change', (e) => {
+            currentAnimation = e.target.value;
+            // Set default speed based on animation type like in SpriteModel2D
+            if (currentAnimation === 'fly') dynamicSpeed = 100;
+            if (currentAnimation === 'ascend') dynamicSpeed = 120;
+            if (currentAnimation === 'descend') dynamicSpeed = 140;
+            document.getElementById('speedSlider').value = dynamicSpeed;
+            document.getElementById('speedVal').innerText = `${dynamicSpeed} ms/frame`;
+            changeAnimation();
+        });
+
+        document.getElementById('playBtn').addEventListener('click', (e) => {
+            isPlaying = !isPlaying;
+            if (isPlaying) {
+                e.target.innerText = 'Pause';
+                e.target.style.background = '#4ade80';
+                e.target.style.color = '#000';
+            } else {
+                e.target.innerText = 'Play';
+                e.target.style.background = '#222';
+                e.target.style.color = '#fff';
+            }
+        });
+
+        function manualStep(step) {
+            isPlaying = false;
+            document.getElementById('playBtn').innerText = 'Play';
+            document.getElementById('playBtn').style.background = '#222';
+            document.getElementById('playBtn').style.color = '#fff';
+            
+            const frames = ANIMATIONS[currentAnimation];
+            frameIndex += step;
+            if (frameIndex >= frames.length) frameIndex = 0;
+            if (frameIndex < 0) frameIndex = frames.length - 1;
+            render();
+        }
+
+        document.getElementById('nextBtn').addEventListener('click', () => manualStep(1));
+        document.getElementById('prevBtn').addEventListener('click', () => manualStep(-1));
+        
+        document.getElementById('gridToggle').addEventListener('change', render);
+        document.getElementById('bgToggle').addEventListener('change', render);
+
+        document.getElementById('speedSlider').addEventListener('input', (e) => {
+            dynamicSpeed = parseInt(e.target.value, 10);
+            document.getElementById('speedVal').innerText = `${dynamicSpeed} ms/frame`;
+        });
+
+        // Initialize first frame
+        fetch('assets/data/config.json')
+            .then(res => res.json())
+            .then(data => {
+                const config = data.animations;
+                for (const [key, anim] of Object.entries(config)) {
+                    ANIMATIONS[key] = anim.frames;
+                }
+                changeAnimation().then(() => requestAnimationFrame(loop));
+            })
+            .catch(e => console.error("Failed to load config.json in preview:", e));
+    </script>
+</body>
+</html>

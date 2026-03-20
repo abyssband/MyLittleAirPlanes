@@ -22,16 +22,14 @@ export class SpriteModel2D {
 
         // Sprite configurations — multi-frame per state
         const prefix = spriteConfig; // 'cat', 'panda', or 'labrador'
-        this.animations = {
-            fly:          { frames: [`${prefix}_fly_1`, `${prefix}_fly_2`, `${prefix}_fly_3`, `${prefix}_fly_4`, `${prefix}_fly_5`, `${prefix}_fly_4`, `${prefix}_fly_3`, `${prefix}_fly_2`], speed: 0.10 },
-            ascend:       { frames: [`${prefix}_ascend_1`, `${prefix}_ascend_2`, `${prefix}_ascend_3`, `${prefix}_ascend_4`, `${prefix}_ascend_5`, `${prefix}_ascend_4`, `${prefix}_ascend_3`, `${prefix}_ascend_2`], speed: 0.12 },
-            descend:      { frames: [`${prefix}_descend_1`, `${prefix}_descend_2`, `${prefix}_descend_3`, `${prefix}_descend_4`, `${prefix}_descend_5`, `${prefix}_descend_4`, `${prefix}_descend_3`, `${prefix}_descend_2`], speed: 0.14 },
-            happy:        { frames: [`${prefix}_happy`], speed: 0.3 },
-            hit:          { frames: [`${prefix}_hit`], speed: 0.5 },
-            crash:        { frames: [`${prefix}_crash`], speed: 0.5 },
-            land_success: { frames: [`${prefix}_land_success`], speed: 0.5 },
-            land_fail:    { frames: [`${prefix}_land_fail`], speed: 0.5 },
-        };
+        this.animations = {};
+        const config = window.GAME_DATA?.animations || {};
+        for (const [key, anim] of Object.entries(config)) {
+            this.animations[key] = {
+                frames: anim.frames.map(f => `${prefix}_${f}`),
+                speed: anim.speed
+            };
+        }
 
         // Collect all unique sprite filenames
         const allFrames = new Set();
